@@ -1,0 +1,200 @@
+// =============================================================================
+// ARCANE GAMEMASTER - Database Schema
+// AI-Powered D&D 5e Companion Application
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// =============================================================================
+// CAMPAIGN
+// =============================================================================
+model Campaign {
+  id              String      @id @default(uuid())
+  name            String
+  description     String?
+  adventureModule String?     // JSON string - Imported adventure data
+  settings        String?     // JSON string - Campaign-specific settings
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  
+  // Relations
+  characters      Character[]
+  gameState       GameState?
+  sessions        Session[]
+}
+
+// =============================================================================
+// CHARACTER
+// Full D&D 5e character with all stats
+// =============================================================================
+model Character {
+  id            String   @id @default(uuid())
+  campaignId    String
+  campaign      Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  
+  // Core Identity
+  name          String
+  race          String
+  characterClass String  @map("class")
+  subclass      String?
+  level         Int      @default(1)
+  background    String?
+  alignment     String?
+  
+  // Ability Scores (1-20)
+  strength      Int      @default(10)
+  dexterity     Int      @default(10)
+  constitution  Int      @default(10)
+  intelligence  Int      @default(10)
+  wisdom        Int      @default(10)
+  charisma      Int      @default(10)
+  
+  // Combat Stats
+  maxHp         Int      @default(10)
+  currentHp     Int      @default(10)
+  tempHp        Int      @default(0)
+  armorClass    Int      @default(10)
+  speed         Int      @default(30)
+  
+  // Hit Dice
+  hitDiceType   Int      @default(8)
+  hitDiceTotal  Int      @default(1)
+  hitDiceRemaining Int   @default(1)
+  
+  // Death Saves
+  deathSaveSuccesses Int @default(0)
+  deathSaveFailures  Int @default(0)
+  
+  // Proficiencies (stored as JSON strings)
+  savingThrowProficiencies String @default("[]")
+  skillProficiencies       String @default("[]")
+  skillExpertise           String @default("[]")
+  
+  // Spellcasting
+  spellcastingAbility String?
+  spellSlots          String @default("{}")
+  knownSpells         String @default("[]")
+  preparedSpells      String @default("[]")
+  
+  // Class Resources
+  classResources String @default("[]")
+  
+  // Inventory
+  inventory     String @default("[]")
+  equippedItems String @default("{}")
+  gold          Int    @default(0)
+  
+  // Conditions
+  conditions String @default("[]")
+  
+  // Features & Traits
+  features String @default("[]")
+  
+  // Backstory & Notes
+  backstory String?
+  notes     String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([campaignId])
+}
+
+// =============================================================================
+// GAME STATE
+// Current state of a campaign session
+// =============================================================================
+model GameState {
+  id          String   @id @default(uuid())
+  campaignId  String   @unique
+  campaign    Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  
+  // Current Mode
+  mode String @default("exploration")
+  
+  // Location
+  currentLocationId String?
+  exploredLocations String @default("[]")
+  
+  // Time Tracking
+  gameDay    Int @default(1)
+  gameHour   Int @default(8)
+  gameMinute Int @default(0)
+  
+  // Active Combat (null when not in combat)
+  activeCombat String?
+  
+  // Progress Tracking
+  flags           String @default("{}")
+  activeQuests    String @default("[]")
+  completedQuests String @default("[]")
+  knownNpcs       String @default("[]")
+  
+  // Conversation Context
+  recentMessages String @default("[]")
+  
+  updatedAt DateTime @updatedAt
+}
+
+// =============================================================================
+// SESSION
+// Session logs and transcripts
+// =============================================================================
+model Session {
+  id            String    @id @default(uuid())
+  campaignId    String
+  campaign      Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  sessionNumber Int
+  startedAt     DateTime  @default(now())
+  endedAt       DateTime?
+  
+  // Session Content
+  transcript    String    @default("[]")
+  summary       String?
+  stateSnapshot String?
+  
+  @@index([campaignId])
+}
+
+// =============================================================================
+// USER SETTINGS
+// Application settings
+// =============================================================================
+model UserSettings {
+  id            String   @id @default(uuid())
+  geminiApiKey  String?
+  theme         String   @default("dark")
+  fontSize      String   @default("medium")
+  diceAnimation Boolean  @default(true)
+  soundEnabled  Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// =============================================================================
+// CACHES
+// External API data caches
+// =============================================================================
+model MonsterCache {
+  id        String   @id
+  name      String
+  data      String
+  fetchedAt DateTime @default(now())
+  
+  @@index([name])
+}
+
+model SpellCache {
+  id        String   @id
+  name      String
+  data      String
+  fetchedAt DateTime @default(now())
+  
+  @@index([name])
+}
